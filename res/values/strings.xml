@@ -4,5 +4,7 @@
     <string name="app_name">AndroidFaceDetection</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-
+     <string name="opencv" >Use OpenCV method</string>
+     <string name="android_buildin">Use Android build-in method</string>
+     <string name="about_text">Copyright @ CMU</string>
 </resources>
