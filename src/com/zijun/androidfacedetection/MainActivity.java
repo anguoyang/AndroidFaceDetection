@@ -1,31 +1,29 @@
 package com.zijun.androidfacedetection;
 
-import java.io.ByteArrayInputStream;
+//import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-//import java.lang.reflect.Array;
-import java.util.Arrays;
-//import java.util.List;
+//import java.util.Arrays;
 
 //import android.R.integer;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.BitmapFactory.Options;
+//import android.graphics.BitmapFactory.Options;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Paint;
-import android.graphics.PointF;
+//import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
-import android.media.FaceDetector;
+//import android.media.FaceDetector;
 import android.os.Bundle;
 import android.R.id;
-import android.R.integer;
+//import android.R.integer;
 //import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.KeyguardManager;
@@ -36,21 +34,27 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.Window;
+//import android.view.Window;
 import android.view.WindowManager;
+
+import org.opencv.android.Utils;
 import org.opencv.core.*;
-import org.opencv.objdetect.*;
+import org.opencv.core.Core.MinMaxLocResult;
+import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
+//import org.opencv.objdetect.*;
+//import org.opencv.*;
 
 public class MainActivity extends Activity {
 	private final String tAGString = "Activity";
 	private boolean resumePending;
 	private Preview mPreview;
-	private MenuItem methodItem ;
-	private MenuItem numFaces;
-	private int method_selection=1;
-    private Mat targetMat;
-    private Mat[] tmpMats;
-    private CascadeClassifier scaleCascadeClassifier;
+	/*private MenuItem methodItem ;
+	private MenuItem numFaces;*/
+	//private int method_selection=1;
+
+	private Mat tmpMat;//Get the template
+  //  private CascadeClassifier scaleCascadeClassifier;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +65,13 @@ public class MainActivity extends Activity {
 		setContentView(mPreview);
 		Log.d(tAGString, "OnCreate");
 		// setContentView(R.layout.activity_main);
-
+		tmpMat=new Mat();
+		try {
+			tmpMat=Utils.loadResource(this, R.drawable.cleantarget, Highgui.CV_LOAD_IMAGE_COLOR);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -131,27 +141,27 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// TODO Auto-generated method stub
-	   switch (item.getItemId()) {
-		   case 1:
-			   method_selection=1;
-		
-		break;
-		   case 2:
-			   method_selection=2;
-			   break;
-		   case 3:
-			   try {
-					aboutdlg. create(MainActivity.this).show();
-				} catch (NameNotFoundException e) {
-					Log.e(tAGString,"Error with about screen");
-				}
-	                return true;   
-		   
-
-	default:
-		
-		break;
-	}
+//	   switch (item.getItemId()) {
+//		   case 1:
+//			   method_selection=1;
+//		
+//		break;
+//		   case 2:
+//			   method_selection=2;
+//			   break;
+//		   case 3:
+//			   try {
+//					aboutdlg. create(MainActivity.this).show();
+//				} catch (NameNotFoundException e) {
+//					Log.e(tAGString,"Error with about screen");
+//				}
+//	                return true;   
+//		   
+//
+//	default:
+//		
+//		break;
+//	}
 		return super.onOptionsItemSelected(item);
 	}
 
@@ -161,24 +171,46 @@ public class MainActivity extends Activity {
 	class Preview extends SurfaceView implements Camera.PreviewCallback,
 			SurfaceHolder.Callback {
 		private static final String TAG_STRING = "Preview";
+		// private static final boolean DEBUG=true;
+		private static final int layers=5;
+		private static final int WINDOW_SIZE=20;// you have to define that more precisely!
+		
+		
+		
 		private SurfaceHolder mHolder;
 		private Camera mCamera;
+		
+		//parameters of NCC!
+		private org.opencv.core.Point[] centerPoints; 
 		private Bitmap tgtBitmap;
         private Bitmap tmpBitmap;
-		private static final int MAX_FACES = 32;
-		// private static final boolean DEBUG=true;
-
-		private FaceDetector mFaceDetector;
-		private FaceDetector.Face[] mFaces = new FaceDetector.Face[MAX_FACES];
-		private FaceDetector.Face singleFace = null;
-
-		private PointF[] faceCenterF = new PointF[MAX_FACES];
-		private float[] eyeDistancef = new float[MAX_FACES];
-		private int numFaceDetected;
+        private Mat tmpMat;
+        private Mat grytmpMat;
+        private Mat tgtMat;
+        private Mat[] scaledMats;
+        private org.opencv.core.Size currentSize;
+        private double[] resultScore;
+        private Mat resultMat;
+        //private MatOfRect tmpRect;
+        //private CascadeClassifier      mJavaDetector;
+		//private static final int MAX_FACES = 32;
+		
+		
+       // parameters of Face recognition!
+//		private FaceDetector mFaceDetector;
+//		private FaceDetector.Face[] mFaces = new FaceDetector.Face[MAX_FACES];
+//		private FaceDetector.Face singleFace = null;
+//
+//		private PointF[] faceCenterF = new PointF[MAX_FACES];
+//		private float[] eyeDistancef = new float[MAX_FACES];
+//		private int numFaceDetected;
 		private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		// pInnerBullsEye and pOuterBullsEye is not declared!
 		private boolean windowDraw = false;
-
+       
+		
+        MinMaxLocResult  locResult;
+		//Constructor!
 		Preview(Context context) {
 			super(context);
 			Log.d(TAG_STRING, "Preview called");
@@ -192,9 +224,41 @@ public class MainActivity extends Activity {
 			setWillNotDraw(windowDraw);
 			
 			tmpBitmap=BitmapFactory.decodeResource(getResources(), R.drawable.cleantarget);
+			
+			tmpMat=new Mat();
+			
+			resultScore=new double[layers];
+			grytmpMat=new Mat();
+			//=new Mat[layers];
+			scaledMats=new Mat[layers];
+			Utils.bitmapToMat(tmpBitmap, tmpMat);
+			Imgproc.cvtColor(tmpMat, grytmpMat, Imgproc.COLOR_RGB2GRAY);
+			scaledMats[0]=grytmpMat;
+			currentSize=new org.opencv.core.Size();
+			
+			//tmpRect=new MatOfRect(grytmpMat);
+			for(int i=0;i<layers-1;i++){
+				currentSize.width=(scaledMats[i].cols()/2);
+				currentSize.height=(scaledMats[i].rows()/2);
+				Imgproc.pyrDown(scaledMats[i], scaledMats[i+1],currentSize);
+			}
+			centerPoints=new org.opencv.core.Point[layers];
+			
+			resultMat=new Mat();
+		   //TODO: you also have to make pyrUp!
+		   //Imgproc.pyrUp(src, dst, dstsize)
+			
+			
+			tgtMat=new Mat();
+//			tmpMat=Utils.loadResource(this, R.drawable.cleantarget, Highgui.CV_LOAD_IMAGE_COLOR);
 			// TODO Auto-generated constructor stub
+			//Imgproc.matchTemplate(image, templ, result, method)
 		}
 
+		
+		
+		
+		
 		public void obtainCamera() {
 			mCamera = Camera.open(CameraInfo.CAMERA_FACING_BACK);// Use the
 																	// front
@@ -253,9 +317,10 @@ public class MainActivity extends Activity {
 				mCamera.startPreview();
 				// ATTENTION The format here is included!!!!
 				tgtBitmap = Bitmap.createBitmap(optimalSize.width,
-						optimalSize.height, Bitmap.Config.RGB_565);
-				mFaceDetector = new FaceDetector(optimalSize.width,
-						optimalSize.height, MAX_FACES);
+						optimalSize.height, Bitmap.Config.ARGB_8888);
+				
+//				mFaceDetector = new FaceDetector(optimalSize.width,
+//						optimalSize.height, MAX_FACES);
 				int bufSize = optimalSize.width
 						* optimalSize.height
 						* ImageFormat.getBitsPerPixel(parameters
@@ -317,59 +382,75 @@ public class MainActivity extends Activity {
 			// bitOptions);
 			tgtBitmap = BitmapFactory.decodeByteArray(
 					(outputStream.toByteArray()), 0, outputStream.size());
-
+            Utils.bitmapToMat(tgtBitmap, tgtMat);
+            //TODO: template Matching Using tgtMat and grytmpMat
+            
+            
+            for(int i=0;i<layers;i++){
+            Imgproc.matchTemplate(tgtMat, scaledMats[i], resultMat,Imgproc.TM_CCORR_NORMED);
+            Core.normalize(resultMat, resultMat, 0, 1, Core.NORM_MINMAX, CvType.CV_8U);
+            //Imgproc.blur(src, dst, ksize)
+            //MinMaxLocResult locResult=new MinMaxLocResult();
+                      locResult=Core.minMaxLoc(resultMat);
+                     centerPoints[i]=locResult.maxLoc;
+                     resultScore[i]=locResult.maxVal;
+                     
+            }         
+            
+            
+            
 			//if (camera.getParameters().getMaxNumDetectedFaces() != 0) {
-            if (method_selection==2) {
-				
-            	
-				Arrays.fill(mFaces, null);
-				Arrays.fill(faceCenterF, null);
-
-				numFaceDetected = mFaceDetector.findFaces(tgtBitmap, mFaces);
-				if (numFaceDetected > 0) {
-					Log.i(TAG_STRING, "face Detected!" + numFaceDetected);
-				}
-
-				for (int i = 0; i < numFaceDetected; i++) {
-					singleFace = mFaces[i];
-					try {
-						PointF eyesMP = new PointF();
-						singleFace.getMidPoint(eyesMP);
-						eyeDistancef[i] = singleFace.eyesDistance();
-						faceCenterF[i] = eyesMP;
-
-						Log.i("Face",
-								i
-										+ " "
-										+ singleFace.confidence()
-										+ " "
-										+ singleFace.eyesDistance()
-										+ " "
-										+ "Pose: ("
-										+ singleFace
-												.pose(FaceDetector.Face.EULER_X)
-										+ ","
-										+ singleFace
-												.pose(FaceDetector.Face.EULER_Y)
-										+ ","
-										+ singleFace
-												.pose(FaceDetector.Face.EULER_Z)
-										+ ")" + "Eyes Midpoint: (" + eyesMP.x
-										+ "," + eyesMP.y + ")");
-
-					} catch (Exception e) {
-						Log.e("Face", i + " is null");
-					}
-				}
-            }
-				else
-				{
-					//TODO Using OpenCV method to do the face detection!
-				}
-
-					// else{
-					// Log.d(TAG_STRING,"");
-					// }
+//            if (method_selection==2) {
+//				
+//            	
+//				Arrays.fill(mFaces, null);
+//				Arrays.fill(faceCenterF, null);
+//
+//				numFaceDetected = mFaceDetector.findFaces(tgtBitmap, mFaces);
+//				if (numFaceDetected > 0) {
+//					Log.i(TAG_STRING, "face Detected!" + numFaceDetected);
+//				}
+//
+//				for (int i = 0; i < numFaceDetected; i++) {
+//					singleFace = mFaces[i];
+//					try {
+//						PointF eyesMP = new PointF();
+//						singleFace.getMidPoint(eyesMP);
+//						eyeDistancef[i] = singleFace.eyesDistance();
+//						faceCenterF[i] = eyesMP;
+//
+//						Log.i("Face",
+//								i
+//										+ " "
+//										+ singleFace.confidence()
+//										+ " "
+//										+ singleFace.eyesDistance()
+//										+ " "
+//										+ "Pose: ("
+//										+ singleFace
+//												.pose(FaceDetector.Face.EULER_X)
+//										+ ","
+//										+ singleFace
+//												.pose(FaceDetector.Face.EULER_Y)
+//										+ ","
+//										+ singleFace
+//												.pose(FaceDetector.Face.EULER_Z)
+//										+ ")" + "Eyes Midpoint: (" + eyesMP.x
+//										+ "," + eyesMP.y + ")");
+//
+//					} catch (Exception e) {
+//						Log.e("Face", i + " is null");
+//					}
+//				}
+//            }
+//				else
+//				{
+//					//TODO Using OpenCV method to do the face detection!
+//				}
+//
+//					// else{
+//					// Log.d(TAG_STRING,"");
+//					// }
 					invalidate();
 					mCamera.addCallbackBuffer(data);
 
@@ -386,23 +467,33 @@ public class MainActivity extends Activity {
 							+ tgtBitmap.getHeight() + ") display size=("
 							+ getWidth() + ", " + getHeight() + ")");
 			super.onDraw(canvas);
-			if (tgtBitmap != null) {
-				Integer countInteger = 0;
+			//if (tgtBitmap != null) {
+				//Integer countInteger = 0;
 
-				for (int i = 0; i < faceCenterF.length; i++) {
-					if (faceCenterF[i] != null) {
-						// See if the calculation is right!
-						// ratio = eyesDistance[i] i* 4.0f / picWidth;
-
-						Rect tmpRect = new Rect(
-								(int) (faceCenterF[i].x - eyeDistancef[i] * 2),
-								(int) (faceCenterF[i].y - eyeDistancef[i] * 2),
-								(int) (faceCenterF[i].x + eyeDistancef[i] * 2),
-								(int) (faceCenterF[i].y + eyeDistancef[i] * 2));
-						canvas.drawRect(tmpRect, mPaint);
-						countInteger = countInteger + 1;
-
-					}
+//				for (int i = 0; i < faceCenterF.length; i++) {
+//					if (faceCenterF[i] != null) {
+//						// See if the calculation is right!
+//						// ratio = eyesDistance[i] i* 4.0f / picWidth;
+//
+//						Rect tmpRect = new Rect(
+//								(int) (faceCenterF[i].x - eyeDistancef[i] * 2),
+//								(int) (faceCenterF[i].y - eyeDistancef[i] * 2),
+//								(int) (faceCenterF[i].x + eyeDistancef[i] * 2),
+//								(int) (faceCenterF[i].y + eyeDistancef[i] * 2));
+//						canvas.drawRect(tmpRect, mPaint);
+//						countInteger = countInteger + 1;
+//
+//					}
+//				}
+				for (int i=0;i<layers;i++){
+				//TODO Draw the rect of interest
+				Rect tempRect=new Rect(
+						(int)(centerPoints[i].x-WINDOW_SIZE/2),
+						(int)(centerPoints[i].y-WINDOW_SIZE/2),
+						(int)(centerPoints[i].x+WINDOW_SIZE/2),
+						(int)(centerPoints[i].y+WINDOW_SIZE/2)
+						);
+				canvas.drawRect(tempRect, mPaint);
 				}
 				// Log.d(TAG_STRING, countInteger.toString());
 			}
@@ -410,4 +501,4 @@ public class MainActivity extends Activity {
 
 	}
 
-}
+
