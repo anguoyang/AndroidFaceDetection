@@ -1,77 +1,101 @@
 package com.zijun.androidfacedetection;
 
-//import java.io.ByteArrayInputStream;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-//import java.util.Arrays;
-
-//import android.R.integer;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-//import android.graphics.BitmapFactory.Options;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Paint;
-//import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
-import android.hardware.Camera.Parameters;
-import android.hardware.Camera.Size;
-//import android.media.FaceDetector;
 import android.os.Bundle;
-import android.R.id;
-//import android.R.integer;
-//import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.Context;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-//import android.view.Window;
 import android.view.WindowManager;
-
 import org.opencv.android.Utils;
-import org.opencv.core.*;
+import org.opencv.core.Mat;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Core.MinMaxLocResult;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-//import org.opencv.objdetect.*;
-//import org.opencv.*;
+
+
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 
 public class MainActivity extends Activity {
+	
 	private final String tAGString = "Activity";
+	
+	private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+		@Override
+		public void onManagerConnected(int status) {
+		   switch (status) {
+		       case LoaderCallbackInterface.SUCCESS:
+		       {
+		      Log.i(tAGString, "OpenCV loaded successfully");
+		      
+		      // Create and set View
+		  	
+		      setContentView(R.layout.activity_main);
+		      
+		       } break;
+		       default:
+		       {
+		      super.onManagerConnected(status);
+		       } break;
+		   }
+		    }
+	};
+//	private Preview mPreview;
 	private boolean resumePending;
-	private Preview mPreview;
+	
 	/*private MenuItem methodItem ;
 	private MenuItem numFaces;*/
 	//private int method_selection=1;
-
-	private Mat tmpMat;//Get the template
-  //  private CascadeClassifier scaleCascadeClassifier;
-    
+	//private Mat tmpMat;//Get the template
+    //private int flag;
+	
+	
+		
+		
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		// requestWindowFeature(Window.FEATURE_NO_TITLE);//without title
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		mPreview = new Preview(this);
-		setContentView(mPreview);
+		
+		if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_5, this, mOpenCVCallBack))
+	    {
+
+	        Log.e(tAGString, "Cannot connect to OpenCV Manager");
+	    }
+		OpenCVLoader.initDebug();
+//		mPreview = new Preview(this);
+//	    setContentView(mPreview);
 		Log.d(tAGString, "OnCreate");
 		// setContentView(R.layout.activity_main);
-		tmpMat=new Mat();
-		try {
-			tmpMat=Utils.loadResource(this, R.drawable.cleantarget, Highgui.CV_LOAD_IMAGE_COLOR);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		flag=1;
+//		tmpMat=new Mat();
+//		try {
+//			tmpMat=Utils.loadResource(this, R.drawable.cleantarget, Highgui.CV_LOAD_IMAGE_COLOR);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
 
 	@Override
@@ -88,7 +112,10 @@ public class MainActivity extends Activity {
 	protected void onPause() {
 		// TODO Auto-generated method stub
 		Log.d(tAGString, "Activity Destoried");
-		mPreview.releaseCamera();
+		/*******************************88
+		 * Careful!!!
+		 */
+		//mPreview.releaseCamera();
 		// Add a function that releases the camera. in mPreivew
 		super.onPause();
 	}
@@ -104,12 +131,19 @@ public class MainActivity extends Activity {
 			Log.d(tAGString, "screenLocked");
 
 		} else {
-			mPreview.obtainCamera();
+			/**********************
+			 * Careful2!!!
+			 */
+			//mPreview.obtainCamera();
 			resumePending = false;
 			Log.d(tAGString, "!screenLocked!");
 
 		}
+		
 		super.onResume();
+		if(!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_5, this,mOpenCVCallBack )){
+			Log.e(tAGString, "Can not Connect to OPENCV Manger!");
+		}
 	}
 
 	public void onWindowFocusChanged(boolean hasFocus) {
@@ -120,7 +154,10 @@ public class MainActivity extends Activity {
 		// entered)
 		if (hasFocus && resumePending) {
 			Log.d(tAGString, "onWindowFocusChanged -- obtainingCamera");
-			mPreview.obtainCamera();
+			/*********************88
+			 * Careful 3!!!
+			 */
+			//mPreview.obtainCamera();
 			resumePending = false;
 		}
 	}
@@ -141,27 +178,6 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// TODO Auto-generated method stub
-//	   switch (item.getItemId()) {
-//		   case 1:
-//			   method_selection=1;
-//		
-//		break;
-//		   case 2:
-//			   method_selection=2;
-//			   break;
-//		   case 3:
-//			   try {
-//					aboutdlg. create(MainActivity.this).show();
-//				} catch (NameNotFoundException e) {
-//					Log.e(tAGString,"Error with about screen");
-//				}
-//	                return true;   
-//		   
-//
-//	default:
-//		
-//		break;
-//	}
 		return super.onOptionsItemSelected(item);
 	}
 
@@ -191,19 +207,8 @@ public class MainActivity extends Activity {
         private org.opencv.core.Size currentSize;
         private double[] resultScore;
         private Mat resultMat;
-        //private MatOfRect tmpRect;
-        //private CascadeClassifier      mJavaDetector;
-		//private static final int MAX_FACES = 32;
-		
-		
-       // parameters of Face recognition!
-//		private FaceDetector mFaceDetector;
-//		private FaceDetector.Face[] mFaces = new FaceDetector.Face[MAX_FACES];
-//		private FaceDetector.Face singleFace = null;
-//
-//		private PointF[] faceCenterF = new PointF[MAX_FACES];
-//		private float[] eyeDistancef = new float[MAX_FACES];
-//		private int numFaceDetected;
+        
+        
 		private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		// pInnerBullsEye and pOuterBullsEye is not declared!
 		private boolean windowDraw = false;
@@ -211,7 +216,7 @@ public class MainActivity extends Activity {
 		
         MinMaxLocResult  locResult;
 		//Constructor!
-		Preview(Context context) {
+		Preview(Context context)  {
 			super(context);
 			Log.d(TAG_STRING, "Preview called");
 			mHolder = getHolder();
@@ -222,16 +227,15 @@ public class MainActivity extends Activity {
 			mPaint.setStyle(Paint.Style.STROKE);
 			windowDraw = false;
 			setWillNotDraw(windowDraw);
-			
-			tmpBitmap=BitmapFactory.decodeResource(getResources(), R.drawable.cleantarget);
-			
 			tmpMat=new Mat();
-			
+			tmpBitmap=BitmapFactory.decodeResource(getResources(), R.drawable.cleantarget);
+			Utils.bitmapToMat(tmpBitmap, tmpMat);
+		
 			resultScore=new double[layers];
 			grytmpMat=new Mat();
 			//=new Mat[layers];
 			scaledMats=new Mat[layers];
-			Utils.bitmapToMat(tmpBitmap, tmpMat);
+			
 			Imgproc.cvtColor(tmpMat, grytmpMat, Imgproc.COLOR_RGB2GRAY);
 			scaledMats[0]=grytmpMat;
 			currentSize=new org.opencv.core.Size();
